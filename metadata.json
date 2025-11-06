@@ -1,0 +1,5 @@
+{
+  "name": "Copy of SafeRide",
+  "description": "A web application to help users who are intoxicated find a professional driver to drive their own vehicle home safely. It includes features for ride booking, driver management, and a simulated payment system.",
+  "requestFramePermissions": []
+}
