@@ -2,13 +2,9 @@ pipeline {
     agent any
 
     environment {
-        // Credentials must be type: "Username + Password" or "Secret Text"
-        SONAR_TOKEN = credentials('sonar')          // secret text
-        DOCKERHUB_USR = credentials('docker').USR   // username
-        DOCKERHUB_PSW = credentials('docker').PSW   // password
-        NEXUS_USR = credentials('nexus').USR        // username
-        NEXUS_PSW = credentials('nexus').PSW        // password
-
+        SONAR_TOKEN = credentials('sonar')     // Secret text
+        DOCKERHUB = credentials('docker')      // Provides: DOCKERHUB_USR, DOCKERHUB_PSW
+        NEXUS = credentials('nexus')           // Provides: NEXUS_USR, NEXUS_PSW
         COMMIT_HASH = "${env.GIT_COMMIT[0..6]}"
         IMAGE_NAME = "yourdockerhubusername/safe-ride-app:${env.GIT_COMMIT[0..6]}"
         NEXUS_URL = "http://3.135.233.41:8081/repository/safe-ride-repo/"
@@ -23,7 +19,7 @@ pipeline {
         stage('Checkout') {
             steps {
                 checkout scm
-                echo "Using commit: ${env.GIT_COMMIT}"
+                echo "Commit Hash: ${env.GIT_COMMIT}"
             }
         }
 
@@ -41,7 +37,6 @@ pipeline {
 
         stage('SonarQube Analysis') {
             steps {
-                echo "Starting SonarQube Scan..."
                 sh '''
                 docker run --rm \
                 -v "$(pwd):/usr/src" \
@@ -67,7 +62,7 @@ pipeline {
                 sh '''
                 curl -v -u $NEXUS_USR:$NEXUS_PSW \
                 --upload-file dist.zip \
-                $NEXUS_URL"safe-ride-app-$COMMIT_HASH.zip"
+                "$NEXUS_URL/safe-ride-app-$COMMIT_HASH.zip"
                 '''
             }
         }
@@ -90,10 +85,10 @@ pipeline {
 
     post {
         success {
-            echo "SUCCESS: Pushed image $IMAGE_NAME"
+            echo "SUCCESS: Image pushed → $IMAGE_NAME"
         }
         failure {
-            echo "FAILED: See logs!"
+            echo "FAILED: Check Jenkins logs"
         }
     }
 }
