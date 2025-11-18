@@ -5,7 +5,7 @@ on:
     branches: [ "main" ]
 
 env:
-  NEXUS_URL: "http://3.135.233.41:8081/repository/safe-ride-raw"   # MUST be a RAW repo
+  NEXUS_URL: "http://3.135.233.41:8081/repository/safe-ride-repo"   # MUST be a RAW repo
   SONAR_HOST: "http://3.135.233.41:9000"
   IMAGE_NAME: "sgorijala513/safe-ride-app"
 
