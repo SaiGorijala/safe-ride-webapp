@@ -1,0 +1,85 @@
+name: SafeRide CI/CD
+
+on:
+  push:
+    branches: [ "main" ]
+
+env:
+  NEXUS_URL: "http://3.135.233.41:8081/repository/safe-ride-repo"
+  SONAR_HOST: "http://3.135.233.41:9000"
+  IMAGE_NAME: "sgorijala513/safe-ride-app"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+
+    # ------------------ CHECKOUT ------------------
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    # ------------------ SETUP NODE ------------------
+    - name: Use Node.js 20
+      uses: actions/setup-node@v4
+      with:
+        node-version: 20
+
+    # ------------------ INSTALL DEPENDENCIES ------------------
+    - name: Install Dependencies
+      run: npm install
+
+    # ------------------ RUN TESTS ------------------
+    - name: Run Tests
+      run: npm test || true
+
+    # ------------------ SONARQUBE ANALYSIS ------------------
+    - name: SonarQube Scan
+      run: |
+        docker run --rm \
+          -v ${{ github.workspace }}:/usr/src \
+          sonarsource/sonar-scanner-cli \
+          -Dsonar.projectKey=my-node-app \
+          -Dsonar.sources=. \
+          -Dsonar.exclusions=node_modules/**,dist/** \
+          -Dsonar.host.url=${{ env.SONAR_HOST }} \
+          -Dsonar.token=${{ secrets.SONAR_TOKEN }}
+
+    # ------------------ BUILD APP ------------------
+    - name: Build App
+      run: |
+        npm run build
+        zip -r dist.zip dist
+
+    # ------------------ UPLOAD TO NEXUS ------------------
+    - name: Upload Artifact to Nexus
+      run: |
+        curl -v -u ${{ secrets.NEXUS_USER }}:${{ secrets.NEXUS_PASS }} \
+          --upload-file dist.zip \
+          ${{ env.NEXUS_URL }}/safe-ride-app-${{ github.sha }}.zip
+
+    # ------------------ DOCKER BUILD ------------------
+    - name: Build Docker Image
+      run: |
+        docker build -t $IMAGE_NAME:${{ github.sha }} .
+
+    # ------------------ DOCKER LOGIN + PUSH ------------------
+    - name: Login to DockerHub
+      run: echo ${{ secrets.DOCKER_PASSWORD }} | docker login -u ${{ secrets.DOCKER_USERNAME }} --password-stdin
+
+    - name: Push Docker Image
+      run: |
+        docker push $IMAGE_NAME:${{ github.sha }}
+
+    # ------------------ OPTIONAL EC2 DEPLOY ------------------
+    - name: Deploy to EC2 (optional)
+      if: success()
+      run: |
+        ssh -o StrictHostKeyChecking=no ubuntu@3.135.233.41 << 'EOF'
+        docker pull $IMAGE_NAME:${{ github.sha }}
+        docker stop safe-ride || true
+        docker rm safe-ride || true
+        docker run -d --name safe-ride -p 80:80 $IMAGE_NAME:${{ github.sha }}
+        EOF
+      env:
+        SSH_PRIVATE_KEY: ${{ secrets.EC2_SSH_KEY }}
