@@ -89,6 +89,8 @@ Dockerfile (for final deployment image)
 
 GitHub Actions workflow (.github/workflows/cicd.yml)
 
+<img width="983" height="165" alt="Image" src="https://github.com/user-attachments/assets/337fd229-9ac1-44e0-916c-9220dcc0bc98" />
+
 # 📦 5. Deploy DevOps Tools in Docker Containers
 
 All services run on the one EC2 instance via Docker.
@@ -109,6 +111,8 @@ docker run -d --name nexus -p 8081:8081 sonatype/nexus3
 # Create: maven-snapshots repo, admin user/token
 # Access: http://<EC2_IP>:8081/repository/maven-snapshots/
 ```
+
+<img width="1676" height="330" alt="Image" src="https://github.com/user-attachments/assets/9b624c6f-a291-4ac4-9d11-95e131290fcd" />
 
 # 🐱‍🏍 6. Custom Tomcat Server Setup
 
@@ -143,6 +147,8 @@ docker push sgorijala513/tomcat:base-config
 This custom image (sgorijala513/tomcat:base-config) is now the base image used for deployments in the Dockerfile.
 ```
 
+<img width="1782" height="873" alt="Image" src="https://github.com/user-attachments/assets/e36c1262-9d33-4a32-9a45-6cf05d46ffd3" />
+
 # 🛠 7. GitHub Actions Setup
 
 The CI/CD process is managed by a single pipeline file located at .github/workflows/cicd.yml.
@@ -168,6 +174,7 @@ Build Docker Image (multi-stage, downloading WAR from Nexus).
 Push Docker Image to Docker Hub.
 
 Deploy to EC2 (SSH): pull the latest image, stop/remove old container, and start new container on port 8080.
+
 
 # 7.2 GitHub Action Secrets
 
@@ -195,31 +202,13 @@ SSH_USER	ubuntu
 
 SSH_PRIVATE_KEY	Contents of your EC2 .pem file
 
+<img width="1154" height="463" alt="Image" src="https://github.com/user-attachments/assets/8ccdbf68-8470-4536-9f80-3f123a6d6313" />
+
 # 📑 8. Dockerfile for Deployable Image
 
 This multi-stage Dockerfile is responsible for fetching the latest built artifact (WAR file) from Nexus and deploying it onto the custom Tomcat base image.
 
-Dockerfile
-### -------- Stage 1: Downloader --------
-FROM eclipse-temurin:17-jre AS downloader
-
-ARG NEXUS_URL
-ARG GROUP_ID_PATH
-ARG APP_NAME
-ARG VERSION
-ARG NEXUS_USER
-ARG NEXUS_PASS
-
-RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
-
-RUN ARTIFACT_URL="${NEXUS_URL}${GROUP_ID_PATH}/${APP_NAME}/${VERSION}/${APP_NAME}-${VERSION}.war" && \
-    echo "Downloading WAR from: ${ARTIFACT_URL}" && \
-    curl -u "${NEXUS_USER}:${NEXUS_PASS}" -L "${ARTIFACT_URL}" -o /tmp/app.war
-
-### -------- Stage 2: Tomcat --------
-FROM sgorijala513/tomcat:base-config
-
-COPY --from=downloader /tmp/app.war /usr/local/tomcat/webapps/ROOT.war
+### Dockerfile
 
 ```
 # -------- Stage 1: Downloader --------
@@ -279,6 +268,8 @@ Open in browser:
 http://<EC2_PUBLIC_IP>:8080/
 Your Java application will load automatically after every successful Git push.
 
+<img width="1800" height="1169" alt="Image" src="https://github.com/user-attachments/assets/7d12378a-257b-4c70-8a2e-6beef9400e7e" />
+
 # 🏁 11. Final Result
 You have successfully implemented a complete and automated CI/CD setup for a Java web application:
 
@@ -297,5 +288,7 @@ You have successfully implemented a complete and automated CI/CD setup for a Jav
 ✔ Automated deployment to EC2
 
 This pipeline continuously builds, analyzes, stores, packages, and deploys your Java application end-to-end.
+
+<img width="1800" height="1169" alt="Image" src="https://github.com/user-attachments/assets/03aec8dc-f800-49f2-87e9-78a266e8c0fd" />
 
 🎉 Project Completed Successfully
