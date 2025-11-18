@@ -2,9 +2,9 @@ pipeline {
     agent any
 
     environment {
-        SONAR_TOKEN = credentials('sonar')     // Secret text
-        DOCKERHUB = credentials('docker')      // Provides: DOCKERHUB_USR, DOCKERHUB_PSW
-        NEXUS = credentials('nexus')           // Provides: NEXUS_USR, NEXUS_PSW
+        SONAR_TOKEN = credentials('sonar')     
+        DOCKERHUB = credentials('docker')      
+        NEXUS = credentials('nexus')           
         COMMIT_HASH = "${env.GIT_COMMIT[0..6]}"
         IMAGE_NAME = "yourdockerhubusername/safe-ride-app:${env.GIT_COMMIT[0..6]}"
         NEXUS_URL = "http://3.135.233.41:8081/repository/safe-ride-repo/"
@@ -59,11 +59,11 @@ pipeline {
 
         stage('Upload Artifact to Nexus') {
             steps {
-                sh '''
+                sh """
                 curl -v -u $NEXUS_USR:$NEXUS_PSW \
                 --upload-file dist.zip \
-                "$NEXUS_URL/safe-ride-app-$COMMIT_HASH.zip"
-                '''
+                ${NEXUS_URL}safe-ride-app-${COMMIT_HASH}.zip
+                """
             }
         }
 
