@@ -18,7 +18,7 @@ pipeline {
 
     stages {
 
-        /* --------------------------- CHECKOUT --------------------------- */
+        /* ----------------------------- CHECKOUT ----------------------------- */
         stage('Checkout') {
             steps {
                 checkout scm
@@ -26,21 +26,21 @@ pipeline {
             }
         }
 
-        /* --------------------------- INSTALL DEPENDENCIES --------------------------- */
+        /* ----------------------------- INSTALL DEPS ----------------------------- */
         stage('Install Dependencies') {
             steps {
                 sh "npm install"
             }
         }
 
-        /* --------------------------- TEST (Optional) --------------------------- */
+        /* ----------------------------- TESTS ----------------------------- */
         stage('Run Tests') {
             steps {
                 sh "npm test || true"
             }
         }
 
-        /* --------------------------- SONAR ANALYSIS --------------------------- */
+        /* ----------------------------- SONAR ----------------------------- */
         stage('SonarQube Analysis') {
             steps {
                 sh '''
@@ -56,7 +56,7 @@ pipeline {
             }
         }
 
-        /* --------------------------- BUILD APP --------------------------- */
+        /* ----------------------------- BUILD APP ----------------------------- */
         stage('Build App') {
             steps {
                 sh "npm run build"
@@ -64,7 +64,7 @@ pipeline {
             }
         }
 
-        /* --------------------------- UPLOAD TO NEXUS --------------------------- */
+        /* ----------------------------- UPLOAD TO NEXUS ----------------------------- */
         stage('Upload Artifact to Nexus') {
             steps {
                 sh '''
@@ -75,7 +75,7 @@ pipeline {
             }
         }
 
-        /* --------------------------- BUILD DOCKER IMAGE --------------------------- */
+        /* ----------------------------- BUILD DOCKER ----------------------------- */
         stage('Build Docker Image') {
             steps {
                 sh '''
@@ -84,7 +84,7 @@ pipeline {
             }
         }
 
-        /* --------------------------- PUSH DOCKER IMAGE --------------------------- */
+        /* ----------------------------- PUSH DOCKER ----------------------------- */
         stage('Push Docker Image') {
             steps {
                 sh '''
@@ -93,12 +93,34 @@ pipeline {
                 '''
             }
         }
+
+        /* ----------------------------- DEPLOY TO NGINX ----------------------------- */
+        stage('Deploy to NGINX Server') {
+            steps {
+                sh '''
+                echo "Stopping old container if exists..."
+                docker stop nginx || true
+                docker rm nginx || true
+
+                echo "Pulling latest image..."
+                docker pull $IMAGE_NAME
+
+                echo "Starting new NGINX container..."
+                docker run -d \
+                    --name nginx \
+                    -p 80:80 \
+                    $IMAGE_NAME
+
+                echo "Deployment completed. App available on port 80."
+                '''
+            }
+        }
     }
 
-    /* --------------------------- POST ACTIONS --------------------------- */
+    /* ----------------------------- POST ----------------------------- */
     post {
         success {
-            echo "SUCCESS: Docker image pushed → ${IMAGE_NAME}"
+            echo "SUCCESS: Deployed → http://3.135.233.41"
         }
         failure {
             echo "FAILED: Check Jenkins logs"
