@@ -5,7 +5,7 @@ on:
     branches: [ "main" ]
 
 env:
-  NEXUS_URL: "http://3.135.233.41:8081/repository/safe-ride-repo"
+  NEXUS_URL: "http://3.135.233.41:8081/repository/safe-ride-raw"   # MUST be a RAW repo
   SONAR_HOST: "http://3.135.233.41:9000"
   IMAGE_NAME: "sgorijala513/safe-ride-app"
 
@@ -51,12 +51,12 @@ jobs:
         npm run build
         zip -r dist.zip dist
 
-    # ------------------ UPLOAD TO NEXUS ------------------
-    - name: Upload Artifact to Nexus
+    # ------------------ UPLOAD TO NEXUS (RAW repo only) ------------------
+    - name: Upload Artifact to Nexus RAW Repo
       run: |
-        curl -v -u ${{ secrets.NEXUS_USER }}:${{ secrets.NEXUS_PASS }} \
+        curl -v -u "${{ secrets.NEXUS_USER }}:${{ secrets.NEXUS_PASS }}" \
           --upload-file dist.zip \
-          ${{ env.NEXUS_URL }}/safe-ride-app-${{ github.sha }}.zip
+          "${{ env.NEXUS_URL }}/safe-ride-app-${{ github.sha }}.zip"
 
     # ------------------ DOCKER BUILD ------------------
     - name: Build Docker Image
@@ -65,21 +65,24 @@ jobs:
 
     # ------------------ DOCKER LOGIN + PUSH ------------------
     - name: Login to DockerHub
-      run: echo ${{ secrets.DOCKER_PASSWORD }} | docker login -u ${{ secrets.DOCKER_USERNAME }} --password-stdin
+      run: echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
 
     - name: Push Docker Image
-      run: |
-        docker push $IMAGE_NAME:${{ github.sha }}
+      run: docker push $IMAGE_NAME:${{ github.sha }}
 
-    # ------------------ OPTIONAL EC2 DEPLOY ------------------
-    - name: Deploy to EC2 (optional)
+    # ------------------ SETUP SSH FOR DEPLOY ------------------
+    - name: Add SSH Key
+      run: |
+        echo "${{ secrets.EC2_SSH_KEY }}" > ec2_key.pem
+        chmod 600 ec2_key.pem
+
+    # ------------------ DEPLOY TO EC2 ------------------
+    - name: Deploy to EC2
       if: success()
       run: |
-        ssh -o StrictHostKeyChecking=no ubuntu@3.135.233.41 << 'EOF'
-        docker pull $IMAGE_NAME:${{ github.sha }}
-        docker stop safe-ride || true
-        docker rm safe-ride || true
-        docker run -d --name safe-ride -p 80:80 $IMAGE_NAME:${{ github.sha }}
+        ssh -i ec2_key.pem -o StrictHostKeyChecking=no ubuntu@3.135.233.41 << EOF
+          docker pull $IMAGE_NAME:${{ github.sha }}
+          docker stop safe-ride || true
+          docker rm safe-ride || true
+          docker run -d --name safe-ride -p 80:80 $IMAGE_NAME:${{ github.sha }}
         EOF
-      env:
-        SSH_PRIVATE_KEY: ${{ secrets.EC2_SSH_KEY }}
