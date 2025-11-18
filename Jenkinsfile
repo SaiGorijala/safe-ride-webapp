@@ -1,17 +1,21 @@
 pipeline {
+
     agent any
 
-    environment {
-        SONAR_TOKEN = credentials('sonar')     
-        DOCKERHUB = credentials('docker')      
-        NEXUS = credentials('nexus')           
-        COMMIT_HASH = "${env.GIT_COMMIT[0..6]}"
-        IMAGE_NAME = "yourdockerhubusername/safe-ride-app:${env.GIT_COMMIT[0..6]}"
-        NEXUS_URL = "http://3.135.233.41:8081/repository/safe-ride-repo/"
+    tools {
+        nodejs 'node20'   // You MUST configure this in Jenkins -> Global Tool Configuration
     }
 
-    tools {
-        nodejs 'node16'
+    environment {
+        // Credentials
+        SONAR_TOKEN   = credentials('sonar')     // secret text
+        DOCKERHUB     = credentials('docker')    // username + password
+        NEXUS         = credentials('nexus')     // username + password
+
+        // Dynamic values
+        COMMIT_HASH = "${env.GIT_COMMIT[0..6]}"
+        IMAGE_NAME  = "yourdockerhubusername/safe-ride-app:${env.GIT_COMMIT[0..6]}"
+        NEXUS_URL   = "http://3.135.233.41:8081/repository/safe-ride-repo"
     }
 
     stages {
@@ -31,13 +35,13 @@ pipeline {
 
         stage('Run Tests') {
             steps {
-                sh "npm test || true"
+                sh "npm test || true"   // No tests? No fail.
             }
         }
 
         stage('SonarQube Analysis') {
             steps {
-                sh '''
+                sh """
                 docker run --rm \
                 -v "$(pwd):/usr/src" \
                 sonarsource/sonar-scanner-cli \
@@ -45,8 +49,8 @@ pipeline {
                 -Dsonar.sources=. \
                 -Dsonar.exclusions=node_modules/**,dist/** \
                 -Dsonar.host.url=http://3.135.233.41:9000 \
-                -Dsonar.token=$SONAR_TOKEN
-                '''
+                -Dsonar.token=${SONAR_TOKEN}
+                """
             }
         }
 
@@ -60,32 +64,32 @@ pipeline {
         stage('Upload Artifact to Nexus') {
             steps {
                 sh """
-                curl -v -u $NEXUS_USR:$NEXUS_PSW \
+                curl -v -u ${NEXUS_USR}:${NEXUS_PSW} \
                 --upload-file dist.zip \
-                ${NEXUS_URL}safe-ride-app-${COMMIT_HASH}.zip
+                ${NEXUS_URL}/safe-ride-app-${COMMIT_HASH}.zip
                 """
             }
         }
 
         stage('Build Docker Image') {
             steps {
-                sh "docker build -t $IMAGE_NAME ."
+                sh "docker build -t ${IMAGE_NAME} ."
             }
         }
 
         stage('Push Docker Image') {
             steps {
-                sh '''
-                echo "$DOCKERHUB_PSW" | docker login -u "$DOCKERHUB_USR" --password-stdin
-                docker push $IMAGE_NAME
-                '''
+                sh """
+                echo "${DOCKERHUB_PSW}" | docker login -u "${DOCKERHUB_USR}" --password-stdin
+                docker push ${IMAGE_NAME}
+                """
             }
         }
     }
 
     post {
         success {
-            echo "SUCCESS: Image pushed → $IMAGE_NAME"
+            echo "SUCCESS: Image pushed → ${IMAGE_NAME}"
         }
         failure {
             echo "FAILED: Check Jenkins logs"
