@@ -19,9 +19,6 @@ pipeline {
         stage('Checkout') {
             steps {
                 checkout scm
-                script {
-                    echo "Commit: ${env.GIT_COMMIT}"
-                }
             }
         }
 
@@ -33,7 +30,7 @@ pipeline {
 
         stage('Run Tests') {
             steps {
-                sh 'npm test || true'  
+                sh 'npm test || true'
             }
         }
 
@@ -42,7 +39,7 @@ pipeline {
                 withSonarQubeEnv('sonarqube-server') {
                     sh """
                     docker run --rm \
-                    -v "$(pwd):/usr/src" \
+                    -v "\$(pwd):/usr/src" \
                     sonarsource/sonar-scanner-cli \
                     -Dsonar.projectKey=my-node-app \
                     -Dsonar.sources=. \
@@ -57,26 +54,23 @@ pipeline {
         stage('Build App') {
             steps {
                 sh 'npm run build'
+                sh 'zip -r dist.zip dist'
             }
         }
 
         stage('Upload Artifact to Nexus') {
             steps {
-                script {
-                    sh """
-                    curl -v -u ${NEXUS_USR}:${NEXUS_PSW} \
-                     --upload-file dist.zip \
-                     ${NEXUS_URL}safe-ride-app-${COMMIT_HASH}.zip
-                    """
-                }
+                sh """
+                curl -v -u ${NEXUS_USR}:${NEXUS_PSW} \
+                --upload-file dist.zip \
+                ${NEXUS_URL}safe-ride-app-${COMMIT_HASH}.zip
+                """
             }
         }
 
         stage('Build Docker Image') {
             steps {
-                sh """
-                docker build -t ${IMAGE_NAME} .
-                """
+                sh "docker build -t ${IMAGE_NAME} ."
             }
         }
 
@@ -99,3 +93,4 @@ pipeline {
         }
     }
 }
+
