@@ -5,7 +5,7 @@ on:
     branches: [ "main" ]
 
 env:
-  NEXUS_URL: "http://3.135.233.41:8081/repository/safe-ride-repo"   # MUST be a RAW repo
+  NEXUS_URL: "http://3.135.233.41:8081/repository/safe-ride-repo"   # RAW Repository
   SONAR_HOST: "http://3.135.233.41:9000"
   IMAGE_NAME: "sgorijala513/safe-ride-app"
 
@@ -19,7 +19,7 @@ jobs:
     - name: Checkout Code
       uses: actions/checkout@v4
 
-    # ------------------ SETUP NODE ------------------
+    # ------------------ SETUP NODE ENV ------------------
     - name: Use Node.js 20
       uses: actions/setup-node@v4
       with:
@@ -29,7 +29,7 @@ jobs:
     - name: Install Dependencies
       run: npm install
 
-    # ------------------ RUN TESTS ------------------
+    # ------------------ TESTS (OPTIONAL) ------------------
     - name: Run Tests
       run: npm test || true
 
@@ -45,20 +45,20 @@ jobs:
           -Dsonar.host.url=${{ env.SONAR_HOST }} \
           -Dsonar.token=${{ secrets.SONAR_TOKEN }}
 
-    # ------------------ BUILD APP ------------------
+    # ------------------ BUILD FRONTEND ------------------
     - name: Build App
       run: |
         npm run build
         zip -r dist.zip dist
 
-    # ------------------ UPLOAD TO NEXUS (RAW repo only) ------------------
+    # ------------------ UPLOAD ARTIFACT TO NEXUS ------------------
     - name: Upload Artifact to Nexus RAW Repo
       run: |
         curl -v -u "${{ secrets.NEXUS_USER }}:${{ secrets.NEXUS_PASS }}" \
           --upload-file dist.zip \
           "${{ env.NEXUS_URL }}/safe-ride-app-${{ github.sha }}.zip"
 
-    # ------------------ DOCKER BUILD ------------------
+    # ------------------ BUILD DOCKER IMAGE ------------------
     - name: Build Docker Image
       run: |
         docker build -t $IMAGE_NAME:${{ github.sha }} .
@@ -70,7 +70,7 @@ jobs:
     - name: Push Docker Image
       run: docker push $IMAGE_NAME:${{ github.sha }}
 
-    # ------------------ SETUP SSH FOR DEPLOY ------------------
+    # ------------------ SSH KEY SETUP ------------------
     - name: Add SSH Key
       run: |
         echo "${{ secrets.EC2_SSH_KEY }}" > ec2_key.pem
@@ -84,5 +84,5 @@ jobs:
           docker pull $IMAGE_NAME:${{ github.sha }}
           docker stop safe-ride || true
           docker rm safe-ride || true
-          docker run -d --name safe-ride -p 80:80 $IMAGE_NAME:${{ github.sha }}
+          docker run -d --name safe-ride -p 8090:80 $IMAGE_NAME:${{ github.sha }}
         EOF
