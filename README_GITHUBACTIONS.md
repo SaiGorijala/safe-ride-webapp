@@ -159,3 +159,6 @@ jobs:
           docker run -d --name safe-ride -p 8090:80 $IMAGE_NAME:${{ github.sha }}
         EOF
 ```
+
+<img width="1800" height="1169" alt="Image" src="https://github.com/user-attachments/assets/37a0917d-52c5-4dae-b732-16e54709878a" />
+
